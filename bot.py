@@ -11,41 +11,46 @@ config = configparser.ConfigParser()
 config.read_file(open('bot.properties', 'r'))
 
 TOKEN = config.get('Bot', 'token')
+CHANNEL_ID = int(config.get('Bot', 'channel.id'))
 
 bot = commands.Bot(command_prefix='!')
-channel_id = config.get('Bot', 'channel.id')
 
 def log(message):
     print("%s - %s" % (datetime.datetime.now(), message))
 
-def getmeme():
-    response = requests.get('https://memefryer.herokuapp.com/api/images/fry').json()
-    f = io.BytesIO(base64.b64decode(response['imageBytes']))
-    f.name = 'meme.png'
-    return discord.File(f)
+async def sendmeme(ctx):
+    r = requests.get('https://memefryer.herokuapp.com/api/images/fry')
+    if r.status_code == 200:
+        response = r.json()
+        f = io.BytesIO(base64.b64decode(response['imageBytes']))
+        f.name = 'meme.png'
+        await ctx.send(file=discord.File(f))
+    else:
+        log('Failed response from Memefryer app! No meme sent!')
+        await ctx.send('Hmm... Úgy tűnik odaégett...')
 
 @bot.command(name='ránts', help='Ránt egy véletlenszerü mémet.')
 async def fry(ctx):
     log('On-demand meme sending...')
     await ctx.send('Egy pillanat...')
-    await ctx.send(file=getmeme())
+    await sendmeme(ctx)
 
 async def sendScheduledMeme():
     log('Scheduled meme sending...')
-    await bot.get_channel(channel_id).send(file=getmeme())
+    await sendmeme(bot.get_channel(CHANNEL_ID))
 
 @tasks.loop(minutes=1)
 async def loop():
     currentTime = datetime.datetime.now()
     if currentTime.minute == 0:
         if currentTime.hour == 8:
-            await bot.get_channel(channel_id).send('Érkezik a reggeli rántás...')
+            await bot.get_channel(CHANNEL_ID).send('Érkezik a reggeli rántás...')
             await sendScheduledMeme()
         if currentTime.hour == 14:
-            await bot.get_channel(channel_id).send('Érkezik a délutáni rántás...')
+            await bot.get_channel(CHANNEL_ID).send('Érkezik a délutáni rántás...')
             await sendScheduledMeme()
         if currentTime.hour == 20:
-            await bot.get_channel(channel_id).send('Érkezik az esti rántás...')
+            await bot.get_channel(CHANNEL_ID).send('Érkezik az esti rántás...')
             await sendScheduledMeme()
 
 @bot.event
