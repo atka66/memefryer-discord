@@ -5,11 +5,15 @@ from discord.ext import commands, tasks
 import requests
 import base64
 import datetime
+import configparser
 
-TOKEN = '--' # fill with app token
+config = configparser.ConfigParser()
+config.read_file(open('bot.properties', 'r'))
+
+TOKEN = config.get('Bot', 'token')
 
 bot = commands.Bot(command_prefix='!')
-channel_id = 0 # fill with channel ID to send scheduled memes
+channel_id = config.get('Bot', 'channel.id')
 
 def log(message):
     print("%s - %s" % (datetime.datetime.now(), message))
