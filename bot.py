@@ -6,6 +6,7 @@ import requests
 import base64
 import datetime
 import configparser
+import time
 
 config = configparser.ConfigParser()
 config.read_file(open('bot.properties', 'r'))
@@ -18,7 +19,16 @@ bot = commands.Bot(command_prefix='!')
 def log(message):
     print("%s - %s" % (datetime.datetime.now(), message))
 
+async def sendPreflight(ctx):
+    log('Sending preflight to wake up the backend application...')
+    r = requests.get('https://memefryer.herokuapp.com/')
+    if r.status_code != 200:
+        log('Application is probably sleeping. Waiting for a minute...')
+        await ctx.send('A rántó még ébredezik, egy pillanat...')
+        time.sleep(60)
+
 async def sendmeme(ctx):
+    log('Fetching meme...')
     r = requests.get('https://memefryer.herokuapp.com/api/images/fry')
     if r.status_code == 200:
         response = r.json()
@@ -33,24 +43,25 @@ async def sendmeme(ctx):
 async def fry(ctx):
     log('On-demand meme sending...')
     await ctx.send('Egy pillanat...')
+    await sendPreflight(ctx)
     await sendmeme(ctx)
 
 async def sendScheduledMeme():
     log('Scheduled meme sending...')
-    await sendmeme(bot.get_channel(CHANNEL_ID))
+    channel = bot.get_channel(CHANNEL_ID)
+    await channel.send('Készül a rántás...')
+    await sendPreflight(channel)
+    await sendmeme(channel)
 
 @tasks.loop(minutes=1)
 async def loop():
     currentTime = datetime.datetime.now()
     if currentTime.minute == 0:
         if currentTime.hour == 8:
-            await bot.get_channel(CHANNEL_ID).send('Érkezik a reggeli rántás...')
             await sendScheduledMeme()
         if currentTime.hour == 14:
-            await bot.get_channel(CHANNEL_ID).send('Érkezik a délutáni rántás...')
             await sendScheduledMeme()
         if currentTime.hour == 20:
-            await bot.get_channel(CHANNEL_ID).send('Érkezik az esti rántás...')
             await sendScheduledMeme()
 
 @bot.event
