@@ -11,17 +11,20 @@ import time
 config = configparser.ConfigParser()
 config.read_file(open('bot.properties', 'r'))
 
+MEMEFRYER_ROOT = config.get('Bot', 'memefryer.root')
 TOKEN = config.get('Bot', 'token')
 CHANNEL_ID = int(config.get('Bot', 'channel.id'))
 
-bot = commands.Bot(command_prefix='!')
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix='!', intents=intents)
 
 def log(message):
     print("%s - %s" % (datetime.datetime.now(), message))
 
 async def sendPreflight(ctx):
     log('Sending preflight to wake up the backend application...')
-    r = requests.get('https://memefryer.herokuapp.com/')
+    r = requests.get(MEMEFRYER_ROOT)
     if r.status_code != 200:
         log('Application is probably sleeping. Waiting for a minute...')
         await ctx.send('A rántó még ébredezik, egy pillanat...')
@@ -29,7 +32,7 @@ async def sendPreflight(ctx):
 
 async def sendmeme(ctx):
     log('Fetching meme...')
-    r = requests.get('https://memefryer.herokuapp.com/api/images/fry')
+    r = requests.get(MEMEFRYER_ROOT + 'api/images/fry')
     if r.status_code == 200:
         response = r.json()
         f = io.BytesIO(base64.b64decode(response['imageBytes']))
@@ -66,7 +69,7 @@ async def loop():
 
 @bot.event
 async def on_ready():
-    print('Meme fryer is UP')
+    log('Meme fryer is UP')
     loop.start()
 
 bot.run(TOKEN)
